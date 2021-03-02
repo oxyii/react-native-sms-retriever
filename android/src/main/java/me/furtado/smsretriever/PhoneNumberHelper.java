@@ -82,7 +82,7 @@ final class PhoneNumberHelper {
                 .setPhoneNumberIdentifierSupported(true)
                 .build();
 
-        final GoogleApiClient googleApiClient = getGoogleApiClient(context, activity);
+        final GoogleApiClient googleApiClient = getGoogleApiClient(context);
 
         final PendingIntent intent = Auth.CredentialsApi
                 .getHintPickerIntent(googleApiClient, request);
@@ -93,6 +93,10 @@ final class PhoneNumberHelper {
         } catch (IntentSender.SendIntentException e) {
             promiseReject(SEND_INTENT_ERROR_TYPE, SEND_INTENT_ERROR_MESSAGE);
             callAndResetListener();
+        } finally {
+            if (googleApiClient.isConnected()) {
+                googleApiClient.disconnect();
+            }
         }
     }
 
@@ -101,18 +105,16 @@ final class PhoneNumberHelper {
     //region - Privates
 
     @NonNull
-    private GoogleApiClient getGoogleApiClient(@NonNull final Context context, final Activity activity) {
+    private GoogleApiClient getGoogleApiClient(@NonNull final Context context) {
         if (mGoogleApiClient == null) {
             GoogleApiClient.Builder builder = new GoogleApiClient.Builder(context);
             builder = builder.addConnectionCallbacks(mApiClientConnectionCallbacks);
             builder = builder.addApi(Auth.CREDENTIALS_API);
-
-            if (activity instanceof FragmentActivity) {
-                final FragmentActivity fragmentActivity = (FragmentActivity) activity;
-                builder = builder.enableAutoManage(fragmentActivity, mApiClientOnConnectionFailedListener);
-            }
-
             mGoogleApiClient = builder.build();
+        }
+
+        if (!mGoogleApiClient.isConnected()) {
+            mGoogleApiClient.connect();
         }
 
         return mGoogleApiClient;
